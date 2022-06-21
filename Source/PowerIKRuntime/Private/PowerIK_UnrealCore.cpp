@@ -114,25 +114,31 @@ void FPowerIKCore::LoadBonesFromAnimGraph(const FBoneContainer& RequiredBones)
 
 void FPowerIKCore::LoadBonesFromControlRig(URigHierarchy* Hierarchy)
 {
-	// reset all data structures
-	Reset();
+    // reset all data structures
+    Reset();
 
-	// load bone names, indices and parent relations
-	BonesData.SetNum(Hierarchy->Num());
-	for (int i = 0; i < Hierarchy->Num(); ++i)
-	{
-		const FRigBoneElement* RigBoneElem = Cast<FRigBoneElement>(Hierarchy->Get(i));
-		// const FRigBone& RigBone = (*Hierarchy)[i];
-		
-		FPowerIKBoneData& Bone = BonesData[i];
-		Bone.BoneName = RigBoneElem->GetName();
-		CopyFNameToString(Bone.BoneName, Bone.NameString);
-		Bone.Index = RigBoneElem->GetIndex();
-		Bone.ParentIndex = RigBoneElem->ParentElement->GetIndex();
+    // load bone names, indices and parent relations
+    for (int i = 0; i < Hierarchy->Num(); ++i)
+    {
+        FRigBaseElement* Base = Hierarchy->Get(i);
+        const FRigBoneElement* RigBoneElem = Cast<FRigBoneElement>(Base);
+        if (!RigBoneElem) // control nodes or null nodes are not of the type FRigBoneElement
+        {
+            //UE_LOG(LogTemp, Log, TEXT("This is just to be able to add a breakpoint for debugging"));
+            continue;
+        }
 
-		// store in the map for later lookup
-		BoneNameToIndexMap.Add(Bone.BoneName, RigBoneElem->GetIndex());
-	}
+        BonesData.Add(FPowerIKBoneData());
+        FPowerIKBoneData& Bone = BonesData.Last();
+        Bone.BoneName = RigBoneElem->GetName();
+        CopyFNameToString(Bone.BoneName, Bone.NameString);
+        Bone.Index = RigBoneElem->GetIndex();
+        if (RigBoneElem->ParentElement)
+            Bone.ParentIndex = RigBoneElem->ParentElement->GetIndex();
+
+        // store in the map for later lookup
+        BoneNameToIndexMap.Add(Bone.BoneName, RigBoneElem->GetIndex());
+    }
 }
 
 int32 FPowerIKCore::GetBoneIndex(FName BoneName)
